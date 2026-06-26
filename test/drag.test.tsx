@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, cleanup, fireEvent, createEvent, waitFor } from '@testing-library/react'
+import { render, cleanup, fireEvent, createEvent, waitFor, within } from '@testing-library/react'
 import { later, patchCreateEvent } from './utils'
 import '@testing-library/jest-dom/extend-expect'
 import Interactive from './components/Interactive'
@@ -411,5 +411,30 @@ describe.each([
     rerender(<Component gestures={['Drag']} config={{ drag: { pointer: { keys: false } } }} />)
     fireEvent.keyDown(element, { key: 'ArrowDown' })
     expect(getByTestId(`${prefix}drag-active`)).toHaveTextContent(`false`)
+  })
+})
+
+describe('drag with a throwing setPointerCapture', () => {
+  test(`drag should still start when setPointerCapture throws InvalidPointerId`, () => {
+    const { container } = render(<Interactive gestures={['Drag']} />)
+    const getByTestId = within(container).getByTestId
+    const element = getByTestId(`drag-el`)
+    // Some browsers throw DOMException: InvalidPointerId when the pointer id is
+    // no longer valid by the time setPointerCapture is called (e.g. the pointer
+    // was released between event dispatch and the capture call during rapid
+    // touch interactions). See https://github.com/pmndrs/use-gesture/issues/701
+    element.setPointerCapture = () => {
+      throw new DOMException('InvalidPointerId', 'InvalidPointerId')
+    }
+
+    expect(() => {
+      fireEvent.pointerDown(element, { pointerId: 1, clientX: 10, clientY: 20, buttons: 1 })
+    }).not.toThrow()
+
+    expect(getByTestId(`drag-active`)).toHaveTextContent('true')
+    expect(getByTestId(`drag-dragging`)).toHaveTextContent('true')
+    expect(getByTestId(`drag-start`)).toHaveTextContent(/^fired$/)
+
+    fireEvent.pointerUp(element, { pointerId: 1 })
   })
 })
