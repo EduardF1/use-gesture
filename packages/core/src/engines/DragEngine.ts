@@ -93,12 +93,8 @@ export class DragEngine extends CoordinatesEngine<'drag'> {
       try {
         ;(event.target as HTMLElement).setPointerCapture(event.pointerId)
       } catch {
-        // setPointerCapture can throw a DOMException (InvalidPointerId) when the
-        // pointer id is no longer valid by the time it's called — for instance
-        // when the pointer was released between the event dispatch and this call
-        // during rapid touch interactions or certain browser quirks. The drag
-        // can safely proceed without pointer capture, so we swallow the error
-        // (mirroring the guarded releasePointerCapture call in pointerUp).
+        // setPointerCapture can throw InvalidPointerId when the pointer is no
+        // longer active. Drag can continue without pointer capture.
       }
     }
 
